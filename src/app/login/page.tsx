@@ -45,9 +45,10 @@ export default function LoginPage() {
         setStep("otp");
         setCooldown(60); // 60s cooldown for resend
         
-        // DEV MODE BYPASS ALERT
-        if (data.mockOtp) {
-           alert(`[DEV WARNING] No Email API Key Detected.\n\nYour OTP to login is: ${data.mockOtp}\n\nThis is a fallback mechanism so you can continue testing the application!`);
+        if (data.previewUrl) {
+           alert(`[TEST EMAIL SENT]\n\nSince no SMTP credentials were provided, an email was sent to a test Ethereal account.\n\nPlease check your terminal to find the Preview URL for the OTP!`);
+        } else if (data.mockOtp) {
+           alert(`[DEV WARNING] Nodemailer failed.\n\nYour OTP to login is: ${data.mockOtp}\n\nThis is a fallback mechanism!`);
         }
       } else {
         setError(data.error || "Failed to send OTP.");

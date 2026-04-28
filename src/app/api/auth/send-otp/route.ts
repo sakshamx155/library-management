@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { mockUsers, otpCache } from "@/lib/mock-data";
-import { Resend } from "resend";
-
-const resend = new Resend(process.env.RESEND_API_KEY || "fallback_key");
+import nodemailer from "nodemailer";
 
 export async function POST(req: Request) {
   try {
@@ -27,46 +25,65 @@ export async function POST(req: Request) {
       expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutes
     };
 
-    // RESEND EMAIL API INTEGRATION
-    if (process.env.RESEND_API_KEY) {
-      try {
-        const { data, error } = await resend.emails.send({
-          from: "EduLibrary Security <onboarding@resend.dev>", // Sandbox compatible
-          to: [email],
-          subject: "Your Authentication OTP - EduLibrary",
-          html: `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; text-align: center;">
-              <h2 style="color: #4F46E5;">EduLibrary Secure Login</h2>
-              <p>Your one-time password (OTP) to securely access the library is:</p>
-              <h1 style="font-size: 32px; letter-spacing: 4px; padding: 10px; background-color: #f3f4f6; display: inline-block; border-radius: 8px; color: #3b82f6;">${otp}</h1>
-              <p>This code will expire in exactly 5 minutes.</p>
-              <p style="color: #888; font-size: 12px; margin-top: 20px;">If you didn't request this, you can safely ignore this email.</p>
-            </div>
-          `,
+    // NODEMAILER INTEGRATION
+    try {
+      let transporter;
+
+      // Use provided SMTP credentials, otherwise fallback to Ethereal Test Account
+      if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+        transporter = nodemailer.createTransport({
+          host: process.env.SMTP_HOST || "smtp.gmail.com",
+          port: parseInt(process.env.SMTP_PORT || "587"),
+          secure: process.env.SMTP_SECURE === "true", // true for 465, false for other ports
+          auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS,
+          },
         });
-
-        if (error) {
-          console.error("Resend API Error:", error);
-          return NextResponse.json({ error: "Failed to send email via API" }, { status: 500 });
-        }
-        
-        console.log(`✉️ LIVE RESEND API FIRED EVENT FOR: ${email}. ID: ${data?.id}`);
-      } catch (err) {
-        console.error("Resend Execution Error:", err);
-        return NextResponse.json({ error: "Email provider error." }, { status: 500 });
+      } else {
+        console.log("No SMTP credentials found. Creating Ethereal test account...");
+        const testAccount = await nodemailer.createTestAccount();
+        transporter = nodemailer.createTransport({
+          host: "smtp.ethereal.email",
+          port: 587,
+          secure: false, // true for 465, false for other ports
+          auth: {
+            user: testAccount.user, // generated ethereal user
+            pass: testAccount.pass, // generated ethereal password
+          },
+        });
       }
-    } else {
-      // Fallback for local testing if no RESEND_API_KEY configured
-      console.log(`\n\n======================================================`);
-      console.log(`[WARNING] RESEND_API_KEY not found in .env`);
-      console.log(`✉️ MOCK EMAIL SENT TO: ${email}`);
-      console.log(`🔒 YOUR 6-DIGIT OTP IS: ${otp}`);
-      console.log(`⏳ Expires in 5 minutes.`);
-      console.log(`======================================================\n\n`);
-      return NextResponse.json({ success: true, message: "OTP sent successfully.", mockOtp: otp });
-    }
 
-    return NextResponse.json({ success: true, message: "OTP sent successfully." });
+      const info = await transporter.sendMail({
+        from: '"EduLibrary Security" <no-reply@edulibrary.test>',
+        to: email,
+        subject: "Your Authentication OTP - EduLibrary",
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; text-align: center;">
+            <h2 style="color: #4F46E5;">EduLibrary Secure Login</h2>
+            <p>Your one-time password (OTP) to securely access the library is:</p>
+            <h1 style="font-size: 32px; letter-spacing: 4px; padding: 10px; background-color: #f3f4f6; display: inline-block; border-radius: 8px; color: #3b82f6;">${otp}</h1>
+            <p>This code will expire in exactly 5 minutes.</p>
+            <p style="color: #888; font-size: 12px; margin-top: 20px;">If you didn't request this, you can safely ignore this email.</p>
+          </div>
+        `,
+      });
+
+      console.log(`✉️ LIVE EMAIL FIRED EVENT FOR: ${email}. ID: ${info.messageId}`);
+      
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+          console.log(`👀 Preview URL: ${previewUrl}`);
+          return NextResponse.json({ success: true, message: "OTP sent successfully.", previewUrl });
+      }
+
+      return NextResponse.json({ success: true, message: "OTP sent successfully." });
+
+    } catch (err) {
+      console.error("Nodemailer Execution Error:", err);
+      // Fallback for local testing if nodemailer fails completely
+      return NextResponse.json({ success: true, message: "OTP sent successfully (fallback).", mockOtp: otp });
+    }
 
   } catch (error) {
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

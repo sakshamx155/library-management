@@ -23,6 +23,20 @@ const SUBJECT_COLORS: Record<string, string> = {
   "Biology": "#10b981", // emerald
 };
 
+type Node = {
+  id: string;
+  name: string;
+  group: string;
+  val: number;
+  color: string;
+  resourceData?: any;
+};
+
+type Link = {
+  source: string;
+  target: string;
+};
+
 export default function NetworkPage() {
   const [windowSize, setWindowSize] = useState({ width: 0, height: 0 });
   const [hoveredNode, setHoveredNode] = useState<any>(null);
@@ -35,10 +49,10 @@ export default function NetworkPage() {
   }, []);
 
   const graphData = useMemo(() => {
-    const nodes = [];
-    const links = [];
-    const subjectNodes = new Set();
-    const authorNodes = new Set();
+    const nodes: Node[] = [];
+    const links: Link[] = [];
+    const subjectNodes = new Set<string>();
+    const authorNodes = new Set<string>();
 
     mockResources.forEach((r) => {
       // Create main Resource Node
