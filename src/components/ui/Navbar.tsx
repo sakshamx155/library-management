@@ -1,17 +1,29 @@
 "use client";
 
 import Link from "next/link";
-import { BookMarked, ShieldCheck, Sun, Moon, Flame, Trophy, Medal, Target, Lock, Network } from "lucide-react";
+import { BookMarked, ShieldCheck, Sun, Moon, Flame, Trophy, Medal, Target, Lock, Network, LogOut } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+      router.refresh(); // Important to refresh Server Components expecting cookies to drop
+      router.push('/login');
+    } catch (error) {
+      console.error("Failed to logout", error);
+    }
+  };
 
   return (
     <nav className="fixed top-0 inset-x-0 z-50 flex items-center justify-center h-20 px-6 backdrop-blur-xl bg-background/70 border-b border-white/10 dark:border-white/5 shadow-sm dark:bg-background/80">
@@ -104,6 +116,13 @@ export function Navbar() {
                   </div>
                 </div>
               </div>
+
+              <div className="pt-4 mt-4 border-t border-black/5 dark:border-white/10">
+                <button onClick={handleLogout} className="w-full flex items-center justify-center gap-2 py-2 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 transition-colors text-xs font-bold">
+                  <LogOut className="h-3 w-3" /> Sign Out
+                </button>
+              </div>
+
             </div>
           </div>
         </div>
