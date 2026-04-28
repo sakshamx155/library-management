@@ -1,0 +1,52 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  role      String   @default("student") // admin, student, educator
+  createdAt DateTime @default(now())
+}
+
+model Resource {
+  id            String   @id @default(cuid())
+  title         String
+  author        String
+  subject       String
+  resource_type String
+  file_url      String
+  thumbnail     String?
+  downloads     Int      @default(0)
+  rating        Float    @default(0)
+  reviewsCount  Int      @default(0)
+  description   String   @db.Text
+  difficulty    String?
+  progress      Int?
+  createdAt     DateTime @default(now())
+  
+  tags          Tag[]
+}
+
+model Tag {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  resources Resource[]
+}
+
+model LeaderboardContributor {
+  id             String   @id @default(cuid())
+  name           String
+  points         Int      @default(0)
+  avatarFallback String
+  badges         Json     // Store array of strings
+}
